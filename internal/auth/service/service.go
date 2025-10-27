@@ -1,16 +1,21 @@
 package service
 
 import (
-	"github.com/google/uuid"
+	"context"
+	"messenger-app/internal/auth/store"
+	"messenger-app/internal/auth/store/generated"
 )
 
-func createUser(name string, email string, password string) User {
-	var user User
+type AuthService struct {
+	store *store.AuthRepository
+}
 
-	user.ID = uuid.New()
-	user.Name = name
-	user.Email = email
-	user.Password = password
+func NewAuthService(store *store.AuthRepository) *AuthService {
+	return &AuthService{
+		store: store,
+	}
+}
 
-	return user
+func (s *AuthService) CreateUser(ctx context.Context, user generated.CreateUserParams) (generated.User, error) {
+	return s.store.CreateUser(ctx, user)
 }
