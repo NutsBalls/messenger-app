@@ -22,3 +22,11 @@ func NewAuthRepository(db *pgxpool.Pool) *AuthRepository {
 func (r *AuthRepository) CreateUser(ctx context.Context, params generated.CreateUserParams) (generated.User, error) {
 	return r.Queries.CreateUser(ctx, params)
 }
+
+func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (generated.User, error) {
+	return r.Queries.GetUserByEmail(ctx, email)
+}
+
+func (r *AuthRepository) LogIn(ctx context.Context, params generated.LogInParams) (generated.User, error) {
+	return r.Queries.LogIn(ctx, params)
+}

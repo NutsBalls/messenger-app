@@ -21,7 +21,8 @@ func main() {
 
 	e := echo.New()
 
-	e.POST("/signup", handler.CreateUser)
+	e.POST("/signup", handler.SignUp)
+	e.POST("/login", handler.Login)
 
 	port := ":" + cfg.Port
 	log.Printf("Starting server on port %s", port)
