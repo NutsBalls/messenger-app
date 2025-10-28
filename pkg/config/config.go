@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Port  string
-	DBURL string
+	Port      string
+	DBURL     string
+	JWTSecret string
 }
 
 func Load() *Config {
@@ -27,9 +28,14 @@ func Load() *Config {
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL environment variable is required")
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
 
 	return &Config{
-		Port:  port,
-		DBURL: dbURL,
+		Port:      port,
+		DBURL:     dbURL,
+		JWTSecret: jwtSecret,
 	}
 }

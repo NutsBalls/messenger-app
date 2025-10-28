@@ -4,6 +4,8 @@ import (
 	"context"
 	"messenger-app/internal/auth/store/generated"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,4 +31,11 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (gene
 
 func (r *AuthRepository) LogIn(ctx context.Context, params generated.LogInParams) (generated.User, error) {
 	return r.Queries.LogIn(ctx, params)
+}
+
+func (r *AuthRepository) GetUserByID(ctx context.Context, uuid uuid.UUID) (generated.User, error) {
+	return r.Queries.GetUser(ctx, pgtype.UUID{
+		Bytes: uuid,
+		Valid: true,
+	})
 }

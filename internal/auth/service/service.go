@@ -4,9 +4,11 @@ import (
 	"context"
 	"messenger-app/internal/auth/store"
 	"messenger-app/internal/auth/store/generated"
+	"messenger-app/pkg/tokens"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,9 +22,10 @@ type AuthService struct {
 	secret []byte
 }
 
-func NewAuthService(store *store.AuthRepository) *AuthService {
+func NewAuthService(store *store.AuthRepository, secret string) *AuthService {
 	return &AuthService{
-		store: store,
+		store:  store,
+		secret: []byte(secret),
 	}
 }
 
@@ -31,7 +34,7 @@ func (s *AuthService) SignUp(ctx context.Context, user generated.CreateUserParam
 }
 
 func (s *AuthService) Login(ctx context.Context, user1 generated.LogInParams) (string, generated.User, error) {
-	user, err := s.store.GetUserByEmail(context.Background(), user1.Email)
+	user, err := s.store.GetUserByEmail(ctx, user1.Email)
 	if err != nil {
 		return "", generated.User{}, errors.Wrap(err, ErrWithLogin)
 	}
@@ -40,7 +43,7 @@ func (s *AuthService) Login(ctx context.Context, user1 generated.LogInParams) (s
 		return "", generated.User{}, errors.Wrap(err, ErrWithLogin)
 	}
 
-	token, err := GenerateAccessToken(user.ID.String(), s.secret, time.Duration(time.Minute)*30)
+	token, err := s.GenerateAccessToken(user.ID.String(), time.Duration(time.Minute)*30)
 	if err != nil {
 		return "", generated.User{}, errors.Wrap(err, ErrWithLogin)
 	}
@@ -51,13 +54,44 @@ func (s *AuthService) Login(ctx context.Context, user1 generated.LogInParams) (s
 
 }
 
-func GenerateAccessToken(userID string, secret []byte, ttl time.Duration) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": userID,
-		"exp": time.Now().Add(ttl).Unix(),
-		"iat": time.Now().Unix(),
-		"iss": "messenger-app",
+func (s *AuthService) GenerateAccessToken(userID string, ttl time.Duration) (string, error) {
+	claims := tokens.TokenClaims{
+		Type: "access",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "messenger-app",
+		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secret)
+	return token.SignedString(s.secret)
+}
+
+func (s *AuthService) ParseToken(accesToken string, expectedType string) (uuid.UUID, error) {
+	tokenInfo, err := tokens.Verify(accesToken, s.secret)
+
+	if err != nil {
+		return uuid.Nil, errors.New("invalid token after verify")
+	}
+
+	if tokenInfo.Type != expectedType {
+		return uuid.Nil, errors.New("invalid token type")
+	}
+
+	userID, err := uuid.Parse(tokenInfo.ID)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid token after parse")
+	}
+
+	return userID, nil
+}
+
+func (s *AuthService) GetUserByID(ctx context.Context, uuid uuid.UUID) (generated.User, error) {
+	user, err := s.store.GetUserByID(ctx, uuid)
+	if err != nil {
+		return generated.User{}, errors.New("invalid token in get user by ID")
+	}
+
+	return user, nil
 }

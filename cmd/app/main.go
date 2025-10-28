@@ -16,13 +16,17 @@ func main() {
 	db := database.NewConn(cfg.DBURL)
 
 	store := store.NewAuthRepository(db)
-	service := service.NewAuthService(store)
+	service := service.NewAuthService(store, cfg.JWTSecret)
 	handler := handlers.NewAuthHandler(service)
 
 	e := echo.New()
 
 	e.POST("/signup", handler.SignUp)
 	e.POST("/login", handler.Login)
+
+	auth := e.Group("/auth")
+	auth.Use(handler.AuthMiddlerware)
+	auth.GET("/profile", handler.GetProfile)
 
 	port := ":" + cfg.Port
 	log.Printf("Starting server on port %s", port)
