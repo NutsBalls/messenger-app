@@ -2,6 +2,7 @@ package hasher
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,5 +15,5 @@ func Hash(password string) (string, error) {
 func HashToken(token string) (string, error) {
 	h := sha256.New()
 	h.Write([]byte(token))
-	return Hash(string(h.Sum(nil)))
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

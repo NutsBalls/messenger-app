@@ -105,8 +105,16 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
 	}
 
-	if hashed_refresh, err := hasher.HashToken(body.RefreshToken); err != nil || hashed_refresh != *user.CryptedRefreshToken {
+	if user.CryptedRefreshToken == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "no refresh token stored"})
+	}
+
+	hashedRefresh, err := hasher.HashToken(body.RefreshToken)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad token provided 1"})
+	}
+	if hashedRefresh != *user.CryptedRefreshToken {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "refresh token mismatch"})
 	}
 
 	newTokens, err := h.service.GenerateTokens(c.Request().Context(), user.ID.String())
