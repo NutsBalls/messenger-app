@@ -5,23 +5,16 @@
 package generated
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type RefreshToken struct {
-	ID           pgtype.UUID        `json:"id"`
-	UserID       pgtype.UUID        `json:"user_id"`
-	RefreshToken string             `json:"refresh_token"`
-	ExpiresAt    pgtype.Timestamp   `json:"expires_at"`
-	Revoked      bool               `json:"revoked"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-}
-
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
-	Name         string             `json:"name"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID                  uuid.UUID          `json:"id"`
+	Name                string             `json:"name"`
+	Email               string             `json:"email"`
+	PasswordHash        string             `json:"password_hash"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	CryptedRefreshToken *string            `json:"crypted_refresh_token"`
 }

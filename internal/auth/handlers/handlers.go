@@ -3,12 +3,11 @@ package handlers
 import (
 	"messenger-app/internal/auth/service"
 	"messenger-app/internal/auth/store/generated"
+	"messenger-app/pkg/hasher"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v4"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
@@ -43,7 +42,7 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "wrong email"})
 	}
 
-	passHash, err := HashPassword(req.Password)
+	passHash, err := hasher.Hash(req.Password)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -67,34 +66,22 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
-	var req LoginRequest
+	var req generated.LogInParams
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	if req.Email == "" {
-		req.Email = c.QueryParam("email")
-	}
-	if req.Password == "" {
-		req.Password = c.QueryParam("password")
+	if req.Email == "" || req.PasswordHash == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "empty request"})
 	}
 
-	user := generated.LogInParams{
-		Email:        req.Email,
-		PasswordHash: req.Password,
-	}
-
-	accessToken, refreshToken, user2, err := h.service.Login(c.Request().Context(), user)
+	loginData, err := h.service.Login(c.Request().Context(), req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"email":         user2.Email,
-		"access token":  accessToken,
-		"refresh token": refreshToken,
-	})
+	return c.JSON(http.StatusOK, loginData)
 }
 
 func (h *AuthHandler) Refresh(c echo.Context) error {
@@ -106,11 +93,6 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	check, err := h.service.CheckRefreshToken(c.Request().Context(), body.RefreshToken)
-	if err != nil || !check {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
-	}
-
 	userID, err := h.service.ParseToken(c.Request().Context(), body.RefreshToken, "refresh")
 
 	if err != nil {
@@ -118,33 +100,29 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 	}
 
 	user, err := h.service.GetUserByID(c.Request().Context(), userID)
+
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "user not found"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
 	}
 
-	newAccessToken, err := h.service.GenerateAccessToken(c.Request().Context(), user.ID.String(), time.Duration(time.Minute*30))
+	if hashed_refresh, err := hasher.HashToken(body.RefreshToken); err != nil || hashed_refresh != *user.CryptedRefreshToken {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad token provided 1"})
+	}
+
+	newTokens, err := h.service.GenerateTokens(c.Request().Context(), user.ID.String())
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create new access token"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad token provided 2"})
 	}
 
-	newRefreshToken, err := h.service.GenerateRefreshToken(c.Request().Context(), userID.String(), time.Duration(time.Hour*24))
+	cryptedRefresh, err := hasher.HashToken(newTokens.Refresh)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create new refresh token"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad token provided 3"})
 	}
 
-	expiresAt := time.Now().Add(24 * time.Hour)
-	if err := h.service.UpdateRefreshToken(c.Request().Context(), user.ID.Bytes, newRefreshToken, expiresAt); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to add new refresh token in dab"})
+	if err := h.service.UpdateRefreshToken(c.Request().Context(), userID, &cryptedRefresh); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad token provided 4"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"access token":  newAccessToken,
-		"refresh token": newRefreshToken,
-	})
+	return c.JSON(http.StatusOK, newTokens)
 
-}
-
-func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash), err
 }

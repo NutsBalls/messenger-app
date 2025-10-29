@@ -41,34 +41,8 @@ WHERE id = $1;
 -- name: CheckEmailExists :one
 SELECT EXISTS(SELECT 1 FROM users WHERE email = $1);
 
--- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
-VALUES ($1, $2, $3)
-RETURNING *;
-
--- name: UpdateRefreshToken :one
-UPDATE refresh_tokens
+-- name: UpdateRefreshToken :exec
+UPDATE users
 SET
-    refresh_token = $2,
-    expires_at = $3,
-    created_at = NOW()
-WHERE user_id = $1
-RETURNING *;
-
--- name: CheckRefreshToken :one
-SELECT EXISTS (
-    SELECT 1
-    FROM refresh_tokens
-    WHERE refresh_token = $1
-      AND revoked = false
-      AND expires_at > NOW()
-);
-
--- name: DeleteRefreshToken :exec
-DELETE FROM refresh_tokens WHERE user_id = $1;
-
--- name: LogoutRefreshToken :one
-UPDATE refresh_tokens
-SET revoked = true
-WHERE refresh_token = $1
-RETURNING *;
+    crypted_refresh_token = $2
+WHERE id = $1;
