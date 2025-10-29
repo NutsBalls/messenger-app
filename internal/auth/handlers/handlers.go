@@ -5,6 +5,7 @@ import (
 	"messenger-app/internal/auth/store/generated"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -84,15 +85,63 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		PasswordHash: req.Password,
 	}
 
-	token, user2, err := h.service.Login(c.Request().Context(), user)
+	accessToken, refreshToken, user2, err := h.service.Login(c.Request().Context(), user)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"email":        user2.Email,
-		"access token": token,
+		"email":         user2.Email,
+		"access token":  accessToken,
+		"refresh token": refreshToken,
 	})
+}
+
+func (h *AuthHandler) Refresh(c echo.Context) error {
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := c.Bind(&body); err != nil || body.RefreshToken == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	check, err := h.service.CheckRefreshToken(c.Request().Context(), body.RefreshToken)
+	if err != nil || !check {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
+	}
+
+	userID, err := h.service.ParseToken(c.Request().Context(), body.RefreshToken, "refresh")
+
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
+	}
+
+	user, err := h.service.GetUserByID(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "user not found"})
+	}
+
+	newAccessToken, err := h.service.GenerateAccessToken(c.Request().Context(), user.ID.String(), time.Duration(time.Minute*30))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create new access token"})
+	}
+
+	newRefreshToken, err := h.service.GenerateRefreshToken(c.Request().Context(), userID.String(), time.Duration(time.Hour*24))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create new refresh token"})
+	}
+
+	expiresAt := time.Now().Add(24 * time.Hour)
+	if err := h.service.UpdateRefreshToken(c.Request().Context(), user.ID.Bytes, newRefreshToken, expiresAt); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to add new refresh token in dab"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"access token":  newAccessToken,
+		"refresh token": newRefreshToken,
+	})
+
 }
 
 func HashPassword(password string) (string, error) {

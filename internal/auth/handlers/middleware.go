@@ -12,7 +12,7 @@ const (
 	authHeader = "Authorization"
 )
 
-func (h *AuthHandler) AuthMiddlerware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *AuthHandler) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		header := c.Request().Header.Get(authHeader)
 		fmt.Println("Authorization header:", header)
@@ -28,7 +28,7 @@ func (h *AuthHandler) AuthMiddlerware(next echo.HandlerFunc) echo.HandlerFunc {
 		token := header[7:]
 		fmt.Println("Extracted token:", token)
 
-		userID, err := h.service.ParseToken(token, "access")
+		userID, err := h.service.ParseToken(c.Request().Context(), token, "access")
 
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, map[string]any{

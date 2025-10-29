@@ -25,8 +25,9 @@ func main() {
 	e.POST("/login", handler.Login)
 
 	auth := e.Group("/auth")
-	auth.Use(handler.AuthMiddlerware)
+	auth.Use(handler.AuthMiddleware)
 	auth.GET("/profile", handler.GetProfile)
+	auth.GET("/refresh", handler.Refresh)
 
 	port := ":" + cfg.Port
 	log.Printf("Starting server on port %s", port)

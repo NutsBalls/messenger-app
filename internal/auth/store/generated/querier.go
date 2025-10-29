@@ -12,12 +12,17 @@ import (
 
 type Querier interface {
 	CheckEmailExists(ctx context.Context, email string) (bool, error)
+	CheckRefreshToken(ctx context.Context, refreshToken string) (bool, error)
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteRefreshToken(ctx context.Context, userID pgtype.UUID) error
 	DeleteUser(ctx context.Context, id pgtype.UUID) error
 	GetUser(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	LogIn(ctx context.Context, arg LogInParams) (User, error)
+	LogoutRefreshToken(ctx context.Context, refreshToken string) (RefreshToken, error)
+	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) (RefreshToken, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 
