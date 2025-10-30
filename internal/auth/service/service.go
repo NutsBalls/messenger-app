@@ -14,10 +14,8 @@ import (
 )
 
 const (
-	ErrWithLogin              = "smth wrong in login"
-	ErrWithUpdateRefreshToken = "smth wrong in create refresh token"
-	AccessTTL                 = time.Minute * 30
-	RefreshTTL                = time.Hour * 24
+	AccessTTL  = time.Minute * 30
+	RefreshTTL = time.Hour * 24
 )
 
 type AuthService struct {
@@ -45,34 +43,36 @@ func (s *AuthService) SignUp(ctx context.Context, user generated.CreateUserParam
 func (s *AuthService) Login(ctx context.Context, user1 generated.LogInParams) (*LoginData, error) {
 	user, err := s.store.GetUserByEmail(ctx, user1.Email)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrWithLogin)
+		return nil, errors.Wrap(err, ErrUserNotFound)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(user1.PasswordHash)); err != nil {
-		return nil, errors.Wrap(err, ErrWithLogin)
+		return nil, errors.Wrap(err, ErrInvalidToken)
 	}
 
 	tokensPair, err := s.GenerateTokens(ctx, user.ID.String())
 	if err != nil {
-		return nil, errors.Wrap(err, ErrWithLogin)
+		return nil, errors.Wrap(err, ErrGenerateTokens)
 	}
 
 	cryptedRefreshToken, err := hasher.HashToken(tokensPair.Refresh)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrWithLogin)
+		return nil, errors.Wrap(err, ErrHashToken)
 	}
 
 	s.store.LogIn(ctx, user1)
 
 	if err := s.store.UpdateRefreshToken(ctx, user.ID, &cryptedRefreshToken); err != nil {
-		return nil, errors.Wrap(err, "failed to delete old refresh token")
+		return nil, errors.Wrap(err, ErrUpdateToken)
 	}
 
-	return &LoginData{
+	loginData := &LoginData{
 		Email:        user.Email,
 		AccessToken:  tokensPair.Access,
 		RefreshToken: tokensPair.Refresh,
-	}, nil
+	}
+
+	return loginData, nil
 
 }
 
@@ -80,16 +80,16 @@ func (s *AuthService) ParseToken(ctx context.Context, token string, expectedType
 	tokenInfo, err := tokens.Verify(token, s.secret)
 
 	if err != nil {
-		return uuid.Nil, errors.New("invalid token after verify")
+		return uuid.Nil, errors.Wrap(err, ErrInvalidToken)
 	}
 
 	if tokenInfo.Type != expectedType {
-		return uuid.Nil, errors.New("invalid token type")
+		return uuid.Nil, errors.New(ErrTypeToken)
 	}
 
 	userID, err := uuid.Parse(tokenInfo.ID)
 	if err != nil {
-		return uuid.Nil, errors.New("invalid token after parse")
+		return uuid.Nil, errors.Wrap(err, ErrParseToken)
 	}
 
 	return userID, nil
@@ -98,7 +98,7 @@ func (s *AuthService) ParseToken(ctx context.Context, token string, expectedType
 func (s *AuthService) GetUserByID(ctx context.Context, uuid uuid.UUID) (generated.User, error) {
 	user, err := s.store.GetUserByID(ctx, uuid)
 	if err != nil {
-		return generated.User{}, errors.New("invalid token in get user by ID")
+		return generated.User{}, errors.Wrap(err, ErrUserNotFound)
 	}
 
 	return user, nil
