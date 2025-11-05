@@ -35,7 +35,7 @@ func SetupMigrations(pool *pgxpool.Pool) {
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
-	if err := goose.Up(db, "migrations"); err != nil {
+	if err := goose.Up(db, "../migrations"); err != nil {
 		panic(err)
 	}
 	if err := db.Close(); err != nil {
