@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: query.sql
 
-package store
+package dbqueries
 
 import (
 	"context"
@@ -28,6 +28,19 @@ type AddUserToChatParams struct {
 func (q *Queries) AddUserToChat(ctx context.Context, arg AddUserToChatParams) error {
 	_, err := q.db.Exec(ctx, addUserToChat, arg.ChatID, arg.UserID)
 	return err
+}
+
+const chatExists = `-- name: ChatExists :one
+SELECT EXISTS (
+    SELECT 1 FROM chats WHERE id = $1
+)
+`
+
+func (q *Queries) ChatExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, chatExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const createChat = `-- name: CreateChat :one
@@ -242,6 +255,37 @@ func (q *Queries) GetUserChats(ctx context.Context, userID uuid.UUID) ([]Chat, e
 		return nil, err
 	}
 	return items, nil
+}
+
+const isUserInChat = `-- name: IsUserInChat :one
+SELECT EXISTS (
+    SELECT 1 FROM chat_members WHERE chat_id = $1 AND user_id = $2
+)
+`
+
+type IsUserInChatParams struct {
+	ChatID uuid.UUID `json:"chat_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) IsUserInChat(ctx context.Context, arg IsUserInChatParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserInChat, arg.ChatID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const messageExists = `-- name: MessageExists :one
+SELECT EXISTS (
+    SELECT 1 FROM messages WHERE id = $1
+)
+`
+
+func (q *Queries) MessageExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, messageExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const removeUserFromChat = `-- name: RemoveUserFromChat :exec

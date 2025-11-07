@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package store
+package dbqueries
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	AddUserToChat(ctx context.Context, arg AddUserToChatParams) error
+	ChatExists(ctx context.Context, id uuid.UUID) (bool, error)
 	CreateChat(ctx context.Context, isGroup *bool) (Chat, error)
 	CreateGroupChat(ctx context.Context, name *string) (Chat, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)
@@ -22,6 +23,8 @@ type Querier interface {
 	GetChatMembers(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error)
 	GetMessages(ctx context.Context, chatID uuid.UUID) ([]Message, error)
 	GetUserChats(ctx context.Context, userID uuid.UUID) ([]Chat, error)
+	IsUserInChat(ctx context.Context, arg IsUserInChatParams) (bool, error)
+	MessageExists(ctx context.Context, id uuid.UUID) (bool, error)
 	RemoveUserFromChat(ctx context.Context, arg RemoveUserFromChatParams) error
 }
 
