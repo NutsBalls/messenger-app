@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -35,7 +37,10 @@ func SetupMigrations(pool *pgxpool.Pool) {
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
-	if err := goose.Up(db, "../migrations"); err != nil {
+	wd, _ := os.Getwd()
+	migrationsDir := filepath.Join(wd, "migrations")
+
+	if err := goose.Up(db, migrationsDir); err != nil {
 		panic(err)
 	}
 	if err := db.Close(); err != nil {

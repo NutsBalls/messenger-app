@@ -31,22 +31,62 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.Create
 
 }
 
-func (r *MessageRepository) GetMessages(ctx context.Context, chatID uuid.UUID) ([]dbqueries.Message, error) {
-	return r.Queries.GetMessages(ctx, chatID)
+func (r *MessageRepository) GetMessages(ctx context.Context, chatID uuid.UUID) ([]domain.Message, error) {
+
+	dbMsgs, err := r.Queries.GetMessages(ctx, chatID)
+	if err != nil {
+		return []domain.Message{}, err
+	}
+
+	msgs := make([]domain.Message, 0, len(dbMsgs))
+	for _, v := range dbMsgs {
+		msgs = append(msgs, domain.Message{
+			ID:        v.ID,
+			ChatID:    v.ChatID,
+			SenderID:  v.SenderID,
+			Content:   v.Content,
+			IsEdited:  v.IsEdited,
+			CreatedAt: v.CreatedAt,
+			UpdatedAt: v.UpdatedAt,
+		})
+	}
+
+	return msgs, err
 }
 
-func (r *MessageRepository) EditMessage(ctx context.Context, params dbqueries.EditMessageParams) error {
-	return r.Queries.EditMessage(ctx, params)
+func (r *MessageRepository) EditMessage(ctx context.Context, msgID uuid.UUID, newContent string) error {
+	params := dbqueries.EditMessageParams{
+		ID:      msgID,
+		Content: newContent,
+	}
+
+	if err := r.Queries.EditMessage(ctx, params); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *MessageRepository) DeleteMessage(ctx context.Context, id uuid.UUID) error {
-	return r.Queries.DeleteMessage(ctx, id)
+func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
+	if err := r.Queries.DeleteMessage(ctx, msgID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *MessageRepository) DeleteMessages(ctx context.Context, chatID uuid.UUID) error {
-	return r.Queries.DeleteMessages(ctx, chatID)
+	if err := r.Queries.DeleteMessages(ctx, chatID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *MessageRepository) MessageExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return r.Queries.MessageExists(ctx, id)
+func (r *MessageRepository) MessageExists(ctx context.Context, msgID uuid.UUID) (bool, error) {
+	exists, err := r.Queries.MessageExists(ctx, msgID)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"messages/internal/messages/domain"
 	"messages/internal/messages/store"
-	"messages/internal/messages/store/dbqueries"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -27,18 +26,15 @@ func (s *MessageService) CreateMessage(ctx context.Context, chatID uuid.UUID, se
 		return domain.Message{}, errors.Wrap(err, "internal store")
 	}
 	if !exist {
-		return domain.Message{}, errors.Wrap(err, "chat doesn't exists")
+		return domain.Message{}, domain.ErrChatNotFound
 	}
 
-	inChat, err := s.store.IsUserInChat(ctx, dbqueries.IsUserInChatParams{
-		ChatID: chatID,
-		UserID: senderID,
-	})
+	inChat, err := s.store.IsUserInChat(ctx, chatID, senderID)
 	if err != nil {
 		return domain.Message{}, errors.Wrap(err, "internal store")
 	}
 	if !inChat {
-		return domain.Message{}, errors.Wrap(err, "user is not in the chat")
+		return domain.Message{}, domain.ErrUserNotInChat
 	}
 
 	msg, err := s.store.CreateMessage(ctx, domain.CreateMessageRequest{
@@ -54,37 +50,34 @@ func (s *MessageService) CreateMessage(ctx context.Context, chatID uuid.UUID, se
 }
 
 // GetMessages
-func (s *MessageService) GetMessages(ctx context.Context, chatID uuid.UUID) ([]dbqueries.Message, error) {
+func (s *MessageService) GetMessages(ctx context.Context, chatID uuid.UUID) ([]domain.Message, error) {
 	exist, err := s.store.ChatExists(ctx, chatID)
 	if err != nil {
-		return []dbqueries.Message{}, errors.Wrap(err, "internal store")
+		return []domain.Message{}, errors.Wrap(err, "internal store")
 	}
 	if !exist {
-		return []dbqueries.Message{}, errors.Wrap(err, "chat doesn't exists")
+		return []domain.Message{}, domain.ErrChatNotFound
 	}
 
 	msgs, err := s.store.GetMessages(ctx, chatID)
 	if err != nil {
-		return []dbqueries.Message{}, errors.Wrap(err, "internal store")
+		return []domain.Message{}, errors.Wrap(err, "internal store")
 	}
 
 	return msgs, nil
 }
 
 // EditMessage
-func (s *MessageService) EditMessage(ctx context.Context, messageID uuid.UUID, newContent string) error {
-	exist, err := s.store.MessageExists(ctx, messageID)
+func (s *MessageService) EditMessage(ctx context.Context, msgID uuid.UUID, newContent string) error {
+	exist, err := s.store.MessageExists(ctx, msgID)
 	if err != nil {
 		return errors.Wrap(err, "internal store")
 	}
 	if !exist {
-		return errors.Wrap(err, "message doesn't exists")
+		return domain.ErrMessageNotFound
 	}
 
-	err = s.store.EditMessage(ctx, dbqueries.EditMessageParams{
-		ID:      messageID,
-		Content: newContent,
-	})
+	err = s.store.EditMessage(ctx, msgID, newContent)
 	if err != nil {
 		return errors.Wrap(err, "internal store")
 	}
@@ -93,16 +86,16 @@ func (s *MessageService) EditMessage(ctx context.Context, messageID uuid.UUID, n
 }
 
 // DeleteMessage
-func (s *MessageService) DeleteMessage(ctx context.Context, messageID uuid.UUID) error {
-	exist, err := s.store.MessageExists(ctx, messageID)
+func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
+	exist, err := s.store.MessageExists(ctx, msgID)
 	if err != nil {
 		return errors.Wrap(err, "internal store")
 	}
 	if !exist {
-		return errors.Wrap(err, "message doesn't exists")
+		return domain.ErrMessageNotFound
 	}
 
-	err = s.store.DeleteMessage(ctx, messageID)
+	err = s.store.DeleteMessage(ctx, msgID)
 	if err != nil {
 		return errors.Wrap(err, "internal store")
 	}

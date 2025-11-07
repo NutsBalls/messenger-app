@@ -23,6 +23,16 @@ func (r *MessageRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (b
 	return r.Queries.ChatExists(ctx, chatID)
 }
 
-func (r *MessageRepository) IsUserInChat(ctx context.Context, params dbqueries.IsUserInChatParams) (bool, error) {
-	return r.Queries.IsUserInChat(ctx, params)
+func (r *MessageRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (bool, error) {
+	params := dbqueries.IsUserInChatParams{
+		ChatID: chatID,
+		UserID: userID,
+	}
+
+	exists, err := r.Queries.IsUserInChat(ctx, params)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
