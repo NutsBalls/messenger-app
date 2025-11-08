@@ -32,7 +32,6 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.Create
 }
 
 func (r *MessageRepository) GetMessages(ctx context.Context, chatID uuid.UUID) ([]domain.Message, error) {
-
 	dbMsgs, err := r.Queries.GetMessages(ctx, chatID)
 	if err != nil {
 		return []domain.Message{}, err
@@ -69,14 +68,6 @@ func (r *MessageRepository) EditMessage(ctx context.Context, msgID uuid.UUID, ne
 
 func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
 	if err := r.Queries.DeleteMessage(ctx, msgID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *MessageRepository) DeleteMessages(ctx context.Context, chatID uuid.UUID) error {
-	if err := r.Queries.DeleteMessages(ctx, chatID); err != nil {
 		return err
 	}
 

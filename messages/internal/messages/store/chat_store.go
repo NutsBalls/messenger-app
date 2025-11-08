@@ -2,25 +2,58 @@ package store
 
 import (
 	"context"
+	"messages/internal/messages/domain"
 	"messages/internal/messages/store/dbqueries"
 
 	"github.com/google/uuid"
 )
 
-func (r *MessageRepository) CreateChat(ctx context.Context, isGroup bool) (dbqueries.Chat, error) {
-	return r.Queries.CreateChat(ctx, &isGroup)
+func (r *MessageRepository) CreateChat(ctx context.Context, isGroup bool) (domain.Chat, error) {
+	dbChat, err := r.Queries.CreateChat(ctx, &isGroup)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+
+	chat := domain.Chat{
+		ID:        dbChat.ID,
+		Name:      *dbChat.Name,
+		IsGroup:   *dbChat.IsGroup,
+		CreatedAt: dbChat.CreatedAt,
+	}
+
+	return chat, nil
 }
 
 func (r *MessageRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
-	return r.Queries.DeleteChat(ctx, chatID)
+	if err := r.Queries.DeleteChat(ctx, chatID); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *MessageRepository) CreateGroupChat(ctx context.Context, name *string) (dbqueries.Chat, error) {
-	return r.Queries.CreateGroupChat(ctx, name)
+func (r *MessageRepository) CreateGroupChat(ctx context.Context, name *string) (domain.Chat, error) {
+	params, err := r.Queries.CreateGroupChat(ctx, name)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+
+	groupChat := domain.Chat{
+		ID:        params.ID,
+		Name:      *params.Name,
+		IsGroup:   *params.IsGroup,
+		CreatedAt: params.CreatedAt,
+	}
+
+	return groupChat, nil
 }
 
 func (r *MessageRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
-	return r.Queries.ChatExists(ctx, chatID)
+	exists, err := r.Queries.ChatExists(ctx, chatID)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 func (r *MessageRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (bool, error) {
@@ -35,4 +68,12 @@ func (r *MessageRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, 
 	}
 
 	return exists, nil
+}
+
+func (r *MessageRepository) DeleteMessages(ctx context.Context, chatID uuid.UUID) error {
+	if err := r.Queries.DeleteMessages(ctx, chatID); err != nil {
+		return err
+	}
+
+	return nil
 }
