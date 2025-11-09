@@ -1,8 +1,6 @@
 package handlers
 
-import (
-	"messages/internal/messages/service"
-)
+import "messages/internal/messages/service"
 
 type MessagesHandlers struct {
 	service *service.MessagesService

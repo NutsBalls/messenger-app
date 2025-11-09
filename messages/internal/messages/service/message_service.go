@@ -26,7 +26,7 @@ func (s *MessagesService) CreateMessage(ctx context.Context, chatID uuid.UUID, s
 		return domain.Message{}, domain.ErrUserNotInChat
 	}
 
-	msg, err := s.store.CreateMessage(ctx, domain.CreateMessageRequest{
+	msg, err := s.store.CreateMessage(ctx, domain.CreateMessage{
 		ChatID:   chatID,
 		SenderID: senderID,
 		Content:  content,

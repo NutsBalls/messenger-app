@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.CreateMessageRequest) (domain.Message, error) {
+func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.CreateMessage) (domain.Message, error) {
 	params := dbqueries.CreateMessageParams{
 		ChatID:   req.ChatID,
 		SenderID: req.SenderID,

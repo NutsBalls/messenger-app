@@ -5,7 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CreateMessageRequest struct {
+type CreateMessage struct {
 	ChatID   uuid.UUID
 	SenderID uuid.UUID
 	Content  string
