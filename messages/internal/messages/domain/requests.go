@@ -20,3 +20,15 @@ type EditMessageRequest struct {
 type DeleteMessageRequest struct {
 	MessageID uuid.UUID
 }
+
+type CreateChatRequest struct {
+	IsGroup bool
+}
+
+type DeleteChatRequest struct {
+	ChatID uuid.UUID
+}
+
+type CreateGroupChat struct {
+	Name string
+}
