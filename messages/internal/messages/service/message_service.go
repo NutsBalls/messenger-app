@@ -9,8 +9,8 @@ import (
 )
 
 // CreateMessage creates a message in the created chat
-func (s *MessagesService) CreateMessage(ctx context.Context, chatID uuid.UUID, senderID uuid.UUID, content string) (domain.Message, error) {
-	exist, err := s.store.ChatExists(ctx, chatID)
+func (s *MessagesService) CreateMessage(ctx context.Context, params domain.CreateMessage) (domain.Message, error) {
+	exist, err := s.store.ChatExists(ctx, params.ChatID)
 	if err != nil {
 		return domain.Message{}, errors.Wrap(err, "internal store")
 	}
@@ -18,7 +18,7 @@ func (s *MessagesService) CreateMessage(ctx context.Context, chatID uuid.UUID, s
 		return domain.Message{}, domain.ErrChatNotFound
 	}
 
-	inChat, err := s.store.IsUserInChat(ctx, chatID, senderID)
+	inChat, err := s.store.IsUserInChat(ctx, params.ChatID, params.SenderID)
 	if err != nil {
 		return domain.Message{}, errors.Wrap(err, "internal store")
 	}
@@ -27,9 +27,9 @@ func (s *MessagesService) CreateMessage(ctx context.Context, chatID uuid.UUID, s
 	}
 
 	msg, err := s.store.CreateMessage(ctx, domain.CreateMessage{
-		ChatID:   chatID,
-		SenderID: senderID,
-		Content:  content,
+		ChatID:   params.ChatID,
+		SenderID: params.SenderID,
+		Content:  params.Content,
 	})
 	if err != nil {
 		return domain.Message{}, errors.Wrap(err, "internal store")
@@ -65,6 +65,8 @@ func (s *MessagesService) EditMessage(ctx context.Context, msgID uuid.UUID, newC
 	if !exist {
 		return domain.ErrMessageNotFound
 	}
+
+	//chech, what newContent != oldContent
 
 	err = s.store.EditMessage(ctx, msgID, newContent)
 	if err != nil {

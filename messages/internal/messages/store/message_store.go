@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.CreateMessage) (domain.Message, error) {
+func (r *MessagesRepository) CreateMessage(ctx context.Context, req domain.CreateMessage) (domain.Message, error) {
 	params := dbqueries.CreateMessageParams{
 		ChatID:   req.ChatID,
 		SenderID: req.SenderID,
@@ -31,7 +31,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, req domain.Create
 
 }
 
-func (r *MessageRepository) GetMessages(ctx context.Context, chatID uuid.UUID) ([]domain.Message, error) {
+func (r *MessagesRepository) GetMessages(ctx context.Context, chatID uuid.UUID) ([]domain.Message, error) {
 	dbMsgs, err := r.Queries.GetMessages(ctx, chatID)
 	if err != nil {
 		return []domain.Message{}, err
@@ -53,7 +53,7 @@ func (r *MessageRepository) GetMessages(ctx context.Context, chatID uuid.UUID) (
 	return msgs, err
 }
 
-func (r *MessageRepository) EditMessage(ctx context.Context, msgID uuid.UUID, newContent string) error {
+func (r *MessagesRepository) EditMessage(ctx context.Context, msgID uuid.UUID, newContent string) error {
 	params := dbqueries.EditMessageParams{
 		ID:      msgID,
 		Content: newContent,
@@ -66,7 +66,7 @@ func (r *MessageRepository) EditMessage(ctx context.Context, msgID uuid.UUID, ne
 	return nil
 }
 
-func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
+func (r *MessagesRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
 	if err := r.Queries.DeleteMessage(ctx, msgID); err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 	return nil
 }
 
-func (r *MessageRepository) MessageExists(ctx context.Context, msgID uuid.UUID) (bool, error) {
+func (r *MessagesRepository) MessageExists(ctx context.Context, msgID uuid.UUID) (bool, error) {
 	exists, err := r.Queries.MessageExists(ctx, msgID)
 	if err != nil {
 		return false, err

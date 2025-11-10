@@ -6,13 +6,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type MessageRepository struct {
+type MessagesRepository struct {
 	*dbqueries.Queries
 	db *pgxpool.Pool
 }
 
-func NewMessageRepository(db *pgxpool.Pool) *MessageRepository {
-	return &MessageRepository{
+func (r *MessagesRepository) NewMessageRepository(db *pgxpool.Pool) *MessagesRepository {
+	return &MessagesRepository{
 		Queries: dbqueries.New(db),
 		db:      db,
 	}

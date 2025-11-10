@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"messages/internal/messages/domain"
 	"net/http"
 
@@ -21,7 +22,7 @@ func (h *MessagesHandlers) AddUserToChat(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, "user added in chat")
+	return c.JSON(http.StatusOK, fmt.Sprintf("user %s added in chat %s", req.UserID.String(), req.ChatID.String()))
 
 }
 
@@ -39,7 +40,7 @@ func (h *MessagesHandlers) RemoveUserFromChat(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, "user was removed from chat")
+	return c.JSON(http.StatusOK, fmt.Sprintf("user %s was removed from chat %s", req.UserID.String(), req.ChatID.String()))
 }
 
 // GetChatMembers
@@ -71,5 +72,14 @@ func (h *MessagesHandlers) GetUserChats(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, chats)
+	//TODO: асинхронно считвывать и записывать
+	resp := make([]domain.ChatResponse, 0, len(chats))
+	for i, v := range chats {
+		resp[i] = domain.ChatResponse{
+			Name:    v.Name,
+			IsGroup: v.IsGroup,
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }

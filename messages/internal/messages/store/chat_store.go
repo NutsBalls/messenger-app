@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *MessageRepository) CreateChat(ctx context.Context, isGroup bool) (domain.Chat, error) {
+func (r *MessagesRepository) CreateChat(ctx context.Context, isGroup bool) (domain.Chat, error) {
 	dbChat, err := r.Queries.CreateChat(ctx, &isGroup)
 	if err != nil {
 		return domain.Chat{}, err
@@ -24,14 +24,14 @@ func (r *MessageRepository) CreateChat(ctx context.Context, isGroup bool) (domai
 	return chat, nil
 }
 
-func (r *MessageRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
+func (r *MessagesRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
 	if err := r.Queries.DeleteChat(ctx, chatID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *MessageRepository) CreateGroupChat(ctx context.Context, name *string) (domain.Chat, error) {
+func (r *MessagesRepository) CreateGroupChat(ctx context.Context, name *string) (domain.Chat, error) {
 	params, err := r.Queries.CreateGroupChat(ctx, name)
 	if err != nil {
 		return domain.Chat{}, err
@@ -47,7 +47,7 @@ func (r *MessageRepository) CreateGroupChat(ctx context.Context, name *string) (
 	return groupChat, nil
 }
 
-func (r *MessageRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
+func (r *MessagesRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
 	exists, err := r.Queries.ChatExists(ctx, chatID)
 	if err != nil {
 		return false, err
@@ -56,7 +56,7 @@ func (r *MessageRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (b
 	return exists, nil
 }
 
-func (r *MessageRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (bool, error) {
+func (r *MessagesRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (bool, error) {
 	params := dbqueries.IsUserInChatParams{
 		ChatID: chatID,
 		UserID: userID,
@@ -70,7 +70,7 @@ func (r *MessageRepository) IsUserInChat(ctx context.Context, chatID uuid.UUID, 
 	return exists, nil
 }
 
-func (r *MessageRepository) DeleteMessages(ctx context.Context, chatID uuid.UUID) error {
+func (r *MessagesRepository) DeleteMessages(ctx context.Context, chatID uuid.UUID) error {
 	if err := r.Queries.DeleteMessages(ctx, chatID); err != nil {
 		return err
 	}

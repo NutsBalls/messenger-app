@@ -3,10 +3,10 @@ package service
 import "messages/internal/messages/store"
 
 type MessagesService struct {
-	store *store.MessageRepository
+	store *store.MessagesRepository
 }
 
-func NewMessageService(store *store.MessageRepository) *MessagesService {
+func (s *MessagesService) NewMessageService(store *store.MessagesRepository) *MessagesService {
 	return &MessagesService{
 		store: store,
 	}

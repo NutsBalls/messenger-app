@@ -6,7 +6,7 @@ type MessagesHandlers struct {
 	service *service.MessagesService
 }
 
-func NewMessageService(service *service.MessagesService) *MessagesHandlers {
+func (h *MessagesHandlers) NewMessageService(service *service.MessagesService) *MessagesHandlers {
 	return &MessagesHandlers{
 		service: service,
 	}

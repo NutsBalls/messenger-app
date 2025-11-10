@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"messages/internal/messages/domain"
 	"net/http"
 
@@ -15,12 +16,21 @@ func (h *MessagesHandlers) CreateMessage(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	msg, err := h.service.CreateMessage(c.Request().Context(), req.ChatID, req.SenderID, req.Content)
+	params := domain.CreateMessage(req)
+
+	msg, err := h.service.CreateMessage(c.Request().Context(), params)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, msg)
+	resp := domain.CreateMessageResponse{
+		ChatID:    msg.ChatID,
+		SenderID:  msg.SenderID,
+		Content:   msg.Content,
+		CreatedAt: msg.CreatedAt,
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 // GetMessages
@@ -36,7 +46,18 @@ func (h *MessagesHandlers) GetMessages(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, msgs)
+	//TODO: асинхронно считывать и записывать
+	resp := make([]domain.CreateMessageResponse, 0, len(msgs))
+	for i, v := range msgs {
+		resp[i] = domain.CreateMessageResponse{
+			ChatID:    v.ChatID,
+			SenderID:  v.SenderID,
+			Content:   v.Content,
+			CreatedAt: v.CreatedAt,
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 // EditMessage
@@ -51,7 +72,7 @@ func (h *MessagesHandlers) EditMessage(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, "message was edited")
+	return c.JSON(http.StatusOK, fmt.Sprintf("message %s was edited", req.MessageID.String()))
 }
 
 // DeleteMessage
@@ -66,5 +87,5 @@ func (h *MessagesHandlers) DeleteMessage(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, "message was deleted")
+	return c.JSON(http.StatusOK, fmt.Sprintf("message %s was deleted", req.MessageID.String()))
 }

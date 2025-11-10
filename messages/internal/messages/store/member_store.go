@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (r *MessageRepository) AddUserToChat(ctx context.Context, params domain.UserChat) error {
+func (r *MessagesRepository) AddUserToChat(ctx context.Context, params domain.UserChat) error {
 	dbParams := dbqueries.AddUserToChatParams{
 		UserID: params.UserID,
 		ChatID: params.ChatID,
@@ -20,7 +20,7 @@ func (r *MessageRepository) AddUserToChat(ctx context.Context, params domain.Use
 	return nil
 }
 
-func (r *MessageRepository) RemoveUserFromChat(ctx context.Context, params domain.UserChat) error {
+func (r *MessagesRepository) RemoveUserFromChat(ctx context.Context, params domain.UserChat) error {
 	remove := dbqueries.RemoveUserFromChatParams{
 		ChatID: params.ChatID,
 		UserID: params.UserID,
@@ -33,7 +33,7 @@ func (r *MessageRepository) RemoveUserFromChat(ctx context.Context, params domai
 	return nil
 }
 
-func (r *MessageRepository) GetChatMembers(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
+func (r *MessagesRepository) GetChatMembers(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
 	users, err := r.Queries.GetChatMembers(ctx, chatID)
 	if err != nil {
 		return []uuid.UUID{}, err
@@ -42,7 +42,7 @@ func (r *MessageRepository) GetChatMembers(ctx context.Context, chatID uuid.UUID
 	return users, nil
 }
 
-func (r *MessageRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]domain.Chat, error) {
+func (r *MessagesRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]domain.Chat, error) {
 	dbParams, err := r.Queries.GetUserChats(ctx, userID)
 	if err != nil {
 		return []domain.Chat{}, err
