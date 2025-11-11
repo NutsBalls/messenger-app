@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"messenger-app/internal/auth/domain"
 	"messenger-app/internal/auth/service"
-	"messenger-app/internal/auth/store/generated"
 	"messenger-app/pkg/hasher"
 	"net/http"
 	"strings"
@@ -36,7 +36,7 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ReturnError(err, "error in hash password"))
 	}
 
-	params := generated.CreateUserParams{
+	params := domain.CreateUserParams{
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: passHash,
@@ -47,11 +47,17 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, ReturnError(err, "internal server error"))
 	}
 
-	return c.JSON(http.StatusOK, user)
+	resp := domain.CreateUserResponse{
+		Name:         user.Name,
+		Email:        user.Email,
+		PasswordHash: user.PasswordHash,
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
-	var req generated.LogInParams
+	var req domain.LogInParams
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "bad request"))

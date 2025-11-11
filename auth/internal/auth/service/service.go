@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"messenger-app/internal/auth/domain"
 	"messenger-app/internal/auth/store"
-	"messenger-app/internal/auth/store/generated"
 	"messenger-app/pkg/hasher"
 	"messenger-app/pkg/tokens"
 	"time"
@@ -23,12 +23,6 @@ type AuthService struct {
 	secret []byte
 }
 
-type LoginData struct {
-	Email        string `json:"email"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
 func NewAuthService(store *store.AuthRepository, secret string) *AuthService {
 	return &AuthService{
 		store:  store,
@@ -36,37 +30,42 @@ func NewAuthService(store *store.AuthRepository, secret string) *AuthService {
 	}
 }
 
-func (s *AuthService) SignUp(ctx context.Context, user generated.CreateUserParams) (generated.User, error) {
-	return s.store.CreateUser(ctx, user)
+func (s *AuthService) SignUp(ctx context.Context, user domain.CreateUserParams) (domain.User, error) {
+	out, err := s.store.CreateUser(ctx, user)
+	if err != nil {
+		return domain.User{}, nil
+	}
+
+	return out, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, user1 generated.LogInParams) (*LoginData, error) {
+func (s *AuthService) Login(ctx context.Context, user1 domain.LogInParams) (domain.LoginData, error) {
 	user, err := s.store.GetUserByEmail(ctx, user1.Email)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrUserNotFound)
+		return domain.LoginData{}, errors.Wrap(err, ErrUserNotFound)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(user1.PasswordHash)); err != nil {
-		return nil, errors.Wrap(err, ErrInvalidToken)
+		return domain.LoginData{}, errors.Wrap(err, ErrInvalidToken)
 	}
 
 	tokensPair, err := s.GenerateTokens(ctx, user.ID.String())
 	if err != nil {
-		return nil, errors.Wrap(err, ErrGenerateTokens)
+		return domain.LoginData{}, errors.Wrap(err, ErrGenerateTokens)
 	}
 
 	cryptedRefreshToken, err := hasher.HashToken(tokensPair.Refresh)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrHashToken)
+		return domain.LoginData{}, errors.Wrap(err, ErrHashToken)
 	}
 
 	s.store.LogIn(ctx, user1)
 
 	if err := s.store.UpdateRefreshToken(ctx, user.ID, &cryptedRefreshToken); err != nil {
-		return nil, errors.Wrap(err, ErrUpdateToken)
+		return domain.LoginData{}, errors.Wrap(err, ErrUpdateToken)
 	}
 
-	loginData := &LoginData{
+	loginData := domain.LoginData{
 		Email:        user.Email,
 		AccessToken:  tokensPair.Access,
 		RefreshToken: tokensPair.Refresh,
@@ -95,19 +94,28 @@ func (s *AuthService) ParseToken(ctx context.Context, token string, expectedType
 	return userID, nil
 }
 
-func (s *AuthService) GetUserByID(ctx context.Context, uuid uuid.UUID) (generated.User, error) {
+func (s *AuthService) GetUserByID(ctx context.Context, uuid uuid.UUID) (domain.User, error) {
 	user, err := s.store.GetUserByID(ctx, uuid)
 	if err != nil {
-		return generated.User{}, errors.Wrap(err, ErrUserNotFound)
+		return domain.User{}, errors.Wrap(err, ErrUserNotFound)
 	}
 
 	return user, nil
 }
 
 func (s *AuthService) GenerateTokens(ctx context.Context, userID string) (*tokens.TokensPair, error) {
-	return tokens.GenerateTokens(ctx, userID, AccessTTL, RefreshTTL, string(s.secret))
+	tokens, err := tokens.GenerateTokens(ctx, userID, AccessTTL, RefreshTTL, string(s.secret))
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
 }
 
 func (s *AuthService) UpdateRefreshToken(ctx context.Context, uuid uuid.UUID, refreshToken *string) error {
-	return s.store.UpdateRefreshToken(ctx, uuid, refreshToken)
+	if err := s.store.UpdateRefreshToken(ctx, uuid, refreshToken); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"messenger-app/internal/auth/domain"
 	"messenger-app/internal/auth/store/generated"
 
 	"github.com/google/uuid"
@@ -20,25 +21,58 @@ func NewAuthRepository(db *pgxpool.Pool) *AuthRepository {
 	}
 }
 
-func (r *AuthRepository) CreateUser(ctx context.Context, params generated.CreateUserParams) (generated.User, error) {
-	return r.Queries.CreateUser(ctx, params)
+func (r *AuthRepository) CreateUser(ctx context.Context, params domain.CreateUserParams) (domain.User, error) {
+	ref := generated.CreateUserParams(params)
+
+	dbUser, err := r.Queries.CreateUser(ctx, ref)
+	if err != nil {
+		return domain.User{}, err
+	}
+	user := domain.User(dbUser)
+
+	return user, nil
 }
 
-func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (generated.User, error) {
-	return r.Queries.GetUserByEmail(ctx, email)
+func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
+	dbUser, err := r.Queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	user := domain.User(dbUser)
+
+	return user, nil
 }
 
-func (r *AuthRepository) LogIn(ctx context.Context, params generated.LogInParams) (generated.User, error) {
-	return r.Queries.LogIn(ctx, params)
+func (r *AuthRepository) LogIn(ctx context.Context, params domain.LogInParams) (domain.User, error) {
+	ref := generated.LogInParams(params)
+
+	dbUser, err := r.Queries.LogIn(ctx, ref)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	user := domain.User(dbUser)
+
+	return user, nil
 }
 
-func (r *AuthRepository) GetUserByID(ctx context.Context, uuid uuid.UUID) (generated.User, error) {
-	return r.Queries.GetUser(ctx, uuid)
+func (r *AuthRepository) GetUserByID(ctx context.Context, uuid uuid.UUID) (domain.User, error) {
+	dbUser, err := r.Queries.GetUser(ctx, uuid)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	user := domain.User(dbUser)
+	return user, nil
 }
 
 func (r *AuthRepository) UpdateRefreshToken(ctx context.Context, uuid uuid.UUID, refreshToken *string) error {
-	return r.Queries.UpdateRefreshToken(ctx, generated.UpdateRefreshTokenParams{
+	if err := r.Queries.UpdateRefreshToken(ctx, generated.UpdateRefreshTokenParams{
 		ID:                  uuid,
 		CryptedRefreshToken: refreshToken,
-	})
+	}); err != nil {
+		return err
+	}
+	return nil
 }
