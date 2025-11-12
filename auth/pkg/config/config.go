@@ -1,11 +1,6 @@
 package config
 
-import (
-	"log"
-	"os"
-
-	"github.com/joho/godotenv"
-)
+import "os"
 
 type Config struct {
 	Port      string
@@ -13,29 +8,17 @@ type Config struct {
 	JWTSecret string
 }
 
-func Load() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found, using system environment variables")
+func Load() Config {
+	return Config{
+		Port:      getEnv("PORT", "8080"),
+		DBURL:     getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/messenger"),
+		JWTSecret: getEnv("JWT_SECRET", "supersecret"),
 	}
+}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
 	}
-
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
-	}
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET environment variable is required")
-	}
-
-	return &Config{
-		Port:      port,
-		DBURL:     dbURL,
-		JWTSecret: jwtSecret,
-	}
+	return fallback
 }

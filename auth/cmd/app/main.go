@@ -1,37 +1,63 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"messenger-app/internal/auth/handlers"
 	"messenger-app/internal/auth/service"
 	"messenger-app/internal/auth/store"
 	"messenger-app/pkg/config"
 	"messenger-app/pkg/database"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
 	cfg := config.Load()
+
 	db := database.NewConn(cfg.DBURL)
 
-	store := store.NewAuthRepository(db)
-	service := service.NewAuthService(store, cfg.JWTSecret)
-	handler := handlers.NewAuthHandler(service)
+	repo := store.NewAuthStore(db)
+	svc := service.NewAuthService(repo, cfg.JWTSecret)
 
 	e := echo.New()
 
-	e.POST("/signup", handler.SignUp)
-	e.POST("/login", handler.Login)
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	auth := e.Group("/auth")
-	auth.Use(handler.AuthMiddleware)
-	auth.GET("/profile", handler.GetProfile)
-	auth.GET("/refresh", handler.Refresh)
+	h := handlers.NewAuthHandler(svc)
+
+	e.POST("/signup", h.SignUp)
+	e.POST("/login", h.Login)
+	e.POST("/auth/refresh", h.Refresh)
+
+	authGroup := e.Group("/api")
+	authGroup.Use(handlers.AuthMiddleware(svc))
+	// authGroup.GET("/profile", h.GetUserByID)
 
 	port := ":" + cfg.Port
-	log.Printf("Starting server on port %s", port)
-	if err := e.Start(port); err != nil {
-		log.Fatal("Failed to start server: ", err)
+	go func() {
+		if err := e.Start(port); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("shutting down server: %v", err)
+		}
+	}()
+	log.Printf("server started on %s", port)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := e.Shutdown(ctx); err != nil {
+		log.Fatalf("server forced to shutdown: %v", err)
 	}
 }

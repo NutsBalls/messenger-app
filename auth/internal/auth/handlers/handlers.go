@@ -11,12 +11,12 @@ import (
 )
 
 type AuthHandler struct {
-	service *service.AuthService
+	usecase service.AuthUsecase
 }
 
-func NewAuthHandler(s *service.AuthService) *AuthHandler {
+func NewAuthHandler(u service.AuthUsecase) *AuthHandler {
 	return &AuthHandler{
-		service: s,
+		usecase: u,
 	}
 }
 
@@ -27,7 +27,7 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "bad request"))
 	}
 
-	if len([]byte(req.Email)) <= 7 && !strings.Contains(req.Email, "@") {
+	if len([]byte(req.Email)) <= 7 || !strings.Contains(req.Email, "@") {
 		return c.JSON(http.StatusBadRequest, ReturnMessage("wrong email for sign up"))
 	}
 
@@ -37,20 +37,19 @@ func (h *AuthHandler) SignUp(c echo.Context) error {
 	}
 
 	params := domain.CreateUserParams{
-		Name:         req.Name,
-		Email:        req.Email,
-		PasswordHash: passHash,
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: passHash,
 	}
 
-	user, err := h.service.SignUp(c.Request().Context(), params)
+	user, err := h.usecase.SignUp(c.Request().Context(), params)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ReturnError(err, "internal server error"))
+		return InternalError(c, err)
 	}
 
 	resp := domain.CreateUserResponse{
-		Name:         user.Name,
-		Email:        user.Email,
-		PasswordHash: user.PasswordHash,
+		Name:  user.Name,
+		Email: user.Email,
 	}
 
 	return c.JSON(http.StatusOK, resp)
@@ -71,9 +70,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ReturnMessage("wrong email/password"))
 	}
 
-	loginData, err := h.service.Login(c.Request().Context(), req)
+	loginData, err := h.usecase.Login(c.Request().Context(), req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ReturnError(err, "internal server error"))
+		return InternalError(c, err)
 	}
 
 	return c.JSON(http.StatusOK, loginData)
@@ -88,17 +87,17 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "bad request"))
 	}
 
-	userID, err := h.service.ParseToken(c.Request().Context(), body.RefreshToken, "refresh")
+	userID, err := h.usecase.ParseToken(c.Request().Context(), body.RefreshToken, "refresh")
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, ReturnError(err, "wrong refresh token"))
 	}
 
-	user, err := h.service.GetUserByID(c.Request().Context(), userID)
+	user, err := h.usecase.GetUserByID(c.Request().Context(), userID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, ReturnError(err, "user not found"))
 	}
 
-	if user.CryptedRefreshToken == nil {
+	if user.CryptedRefreshToken == "" {
 		return c.JSON(http.StatusUnauthorized, ReturnError(err, "empty refresh token for user"))
 	}
 
@@ -107,11 +106,11 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "error while hashing token"))
 	}
 
-	if hashedRefresh != *user.CryptedRefreshToken {
+	if hashedRefresh != user.CryptedRefreshToken {
 		return c.JSON(http.StatusUnauthorized, ReturnError(err, "refresh tokem mismatch"))
 	}
 
-	newTokens, err := h.service.GenerateTokens(c.Request().Context(), user.ID.String())
+	newTokens, err := h.usecase.GenerateTokens(c.Request().Context(), user.ID.String())
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "internal server error"))
 	}
@@ -121,7 +120,7 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "error while hashing token"))
 	}
 
-	if err := h.service.UpdateRefreshToken(c.Request().Context(), userID, &cryptedRefresh); err != nil {
+	if err := h.usecase.UpdateRefreshToken(c.Request().Context(), userID, &cryptedRefresh); err != nil {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "update token error"))
 	}
 

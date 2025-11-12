@@ -1,7 +1,6 @@
 package domain
 
 type CreateUserResponse struct {
-	Name         string `json:"name"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }

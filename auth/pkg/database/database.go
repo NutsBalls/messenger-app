@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,37 +12,31 @@ import (
 )
 
 func NewConn(databaseURL string) *pgxpool.Pool {
-	log.Printf("Connecting to database with URL: %s", databaseURL)
 	pool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
-		fmt.Println("smth wrong")
-		log.Fatal(err)
+		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	err = pool.Ping(context.Background())
-	if err != nil {
-		log.Fatal(err)
+	if err := pool.Ping(context.Background()); err != nil {
+		log.Fatalf("database ping failed: %v", err)
 	}
 
 	SetupMigrations(pool)
-
 	return pool
 }
 
 func SetupMigrations(pool *pgxpool.Pool) {
-
 	if err := goose.SetDialect("postgres"); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
+	defer db.Close()
+
 	wd, _ := os.Getwd()
 	migrationsDir := filepath.Join(wd, "migrations")
 
 	if err := goose.Up(db, migrationsDir); err != nil {
-		panic(err)
-	}
-	if err := db.Close(); err != nil {
-		panic(err)
+		log.Fatalf("migration failed: %v", err)
 	}
 }

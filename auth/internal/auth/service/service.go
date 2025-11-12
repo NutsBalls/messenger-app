@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"messenger-app/internal/auth/domain"
 	"messenger-app/internal/auth/store"
 	"messenger-app/pkg/hasher"
@@ -9,113 +10,93 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	AccessTTL  = time.Minute * 30
-	RefreshTTL = time.Hour * 24
+	AccessTTL  = 30 * time.Minute
+	RefreshTTL = 24 * time.Hour
 )
 
 type AuthService struct {
-	store  *store.AuthRepository
+	repo   store.AuthRepository
 	secret []byte
 }
 
-func NewAuthService(store *store.AuthRepository, secret string) *AuthService {
+func NewAuthService(repo store.AuthRepository, secret string) *AuthService {
 	return &AuthService{
-		store:  store,
+		repo:   repo,
 		secret: []byte(secret),
 	}
 }
 
 func (s *AuthService) SignUp(ctx context.Context, user domain.CreateUserParams) (domain.User, error) {
-	out, err := s.store.CreateUser(ctx, user)
+	hashedPassword, err := hasher.Hash(user.Password)
 	if err != nil {
-		return domain.User{}, nil
+		return domain.User{}, err
 	}
 
-	return out, nil
+	user.Password = hashedPassword
+	return s.repo.CreateUser(ctx, user)
 }
 
-func (s *AuthService) Login(ctx context.Context, user1 domain.LogInParams) (domain.LoginData, error) {
-	user, err := s.store.GetUserByEmail(ctx, user1.Email)
+func (s *AuthService) Login(ctx context.Context, creds domain.LogInParams) (domain.LoginData, error) {
+	user, err := s.repo.GetUserByEmail(ctx, creds.Email)
 	if err != nil {
-		return domain.LoginData{}, errors.Wrap(err, ErrUserNotFound)
+		return domain.LoginData{}, errors.New(ErrUserNotFound)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(user1.PasswordHash)); err != nil {
-		return domain.LoginData{}, errors.Wrap(err, ErrInvalidToken)
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.PasswordHash)); err != nil {
+		return domain.LoginData{}, errors.New(ErrInvalidCredentials)
 	}
 
 	tokensPair, err := s.GenerateTokens(ctx, user.ID.String())
 	if err != nil {
-		return domain.LoginData{}, errors.Wrap(err, ErrGenerateTokens)
+		return domain.LoginData{}, errors.New(ErrGenerateTokens)
 	}
 
-	cryptedRefreshToken, err := hasher.HashToken(tokensPair.Refresh)
+	hashedRefresh, err := hasher.HashToken(tokensPair.Refresh)
 	if err != nil {
-		return domain.LoginData{}, errors.Wrap(err, ErrHashToken)
+		return domain.LoginData{}, errors.New(ErrHashToken)
 	}
 
-	s.store.LogIn(ctx, user1)
-
-	if err := s.store.UpdateRefreshToken(ctx, user.ID, &cryptedRefreshToken); err != nil {
-		return domain.LoginData{}, errors.Wrap(err, ErrUpdateToken)
+	if err := s.repo.UpdateRefreshToken(ctx, user.ID, &hashedRefresh); err != nil {
+		return domain.LoginData{}, errors.New(ErrUpdateToken)
 	}
 
-	loginData := domain.LoginData{
+	return domain.LoginData{
 		Email:        user.Email,
 		AccessToken:  tokensPair.Access,
 		RefreshToken: tokensPair.Refresh,
-	}
-
-	return loginData, nil
-
+	}, nil
 }
 
 func (s *AuthService) ParseToken(ctx context.Context, token string, expectedType string) (uuid.UUID, error) {
-	tokenInfo, err := tokens.Verify(token, s.secret)
-
+	info, err := tokens.Verify(token, s.secret)
 	if err != nil {
-		return uuid.Nil, errors.Wrap(err, ErrInvalidToken)
+		return uuid.Nil, errors.New(ErrInvalidToken)
 	}
 
-	if tokenInfo.Type != expectedType {
+	if info.Type != expectedType {
 		return uuid.Nil, errors.New(ErrTypeToken)
 	}
 
-	userID, err := uuid.Parse(tokenInfo.ID)
+	id, err := uuid.Parse(info.ID)
 	if err != nil {
-		return uuid.Nil, errors.Wrap(err, ErrParseToken)
+		return uuid.Nil, errors.New(ErrParseToken)
 	}
 
-	return userID, nil
+	return id, nil
 }
 
-func (s *AuthService) GetUserByID(ctx context.Context, uuid uuid.UUID) (domain.User, error) {
-	user, err := s.store.GetUserByID(ctx, uuid)
-	if err != nil {
-		return domain.User{}, errors.Wrap(err, ErrUserNotFound)
-	}
-
-	return user, nil
+func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
+	return s.repo.GetUserByID(ctx, id)
 }
 
 func (s *AuthService) GenerateTokens(ctx context.Context, userID string) (*tokens.TokensPair, error) {
-	tokens, err := tokens.GenerateTokens(ctx, userID, AccessTTL, RefreshTTL, string(s.secret))
-	if err != nil {
-		return nil, err
-	}
-
-	return tokens, nil
+	return tokens.GenerateTokens(ctx, userID, AccessTTL, RefreshTTL, string(s.secret))
 }
 
-func (s *AuthService) UpdateRefreshToken(ctx context.Context, uuid uuid.UUID, refreshToken *string) error {
-	if err := s.store.UpdateRefreshToken(ctx, uuid, refreshToken); err != nil {
-		return err
-	}
-
-	return nil
+func (s *AuthService) UpdateRefreshToken(ctx context.Context, id uuid.UUID, refreshToken *string) error {
+	return s.repo.UpdateRefreshToken(ctx, id, refreshToken)
 }
