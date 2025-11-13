@@ -1,6 +1,6 @@
-package handlers
+package domain
 
-type RegistredRequest struct {
+type RegisterRequest struct {
 	Name     string
 	Password string
 	Email    string

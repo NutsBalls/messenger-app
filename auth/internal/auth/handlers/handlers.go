@@ -21,14 +21,14 @@ func NewAuthHandler(u service.AuthUsecase) *AuthHandler {
 }
 
 func (h *AuthHandler) SignUp(c echo.Context) error {
-	var req RegistredRequest
+	var req domain.RegisterRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, ReturnError(err, "bad request"))
 	}
 
-	if len([]byte(req.Email)) <= 7 || !strings.Contains(req.Email, "@") {
-		return c.JSON(http.StatusBadRequest, ReturnMessage("wrong email for sign up"))
+	if !strings.Contains(req.Email, "@") {
+		return c.JSON(http.StatusBadRequest, ReturnMessage("invalid email"))
 	}
 
 	passHash, err := hasher.Hash(req.Password)

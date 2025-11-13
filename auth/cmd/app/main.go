@@ -33,14 +33,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	h := handlers.NewAuthHandler(svc)
-
-	e.POST("/signup", h.SignUp)
-	e.POST("/login", h.Login)
-	e.POST("/auth/refresh", h.Refresh)
-
-	authGroup := e.Group("/api")
-	authGroup.Use(handlers.AuthMiddleware(svc))
-	// authGroup.GET("/profile", h.GetUserByID)
+	handlers.Router(e, h, svc)
 
 	port := ":" + cfg.Port
 	go func() {

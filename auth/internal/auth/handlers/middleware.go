@@ -6,31 +6,21 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-const (
-	authHeader = "Authorization"
-)
-
-type AuthUsecase interface {
-	ParseToken(ctx echo.Context, token string, kind string) (uuid.UUID, error)
-	GetUserByID(ctx echo.Context, id uuid.UUID) (domain.User, error)
-}
-
-func AuthMiddleware(uc service.AuthUsecase) echo.MiddlewareFunc {
+func (h *AuthHandler) AuthMiddleware(uc service.AuthUsecase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			h := c.Request().Header.Get("Authorization")
-			if h == "" || !strings.HasPrefix(h, "Bearer ") {
-				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing or invalid auth header"})
+			header := c.Request().Header.Get("Authorization")
+			if !strings.HasPrefix(header, "Bearer ") {
+				return c.JSON(http.StatusUnauthorized, ReturnMessage("missing or invalid token"))
 			}
-			token := strings.TrimPrefix(h, "Bearer ")
 
+			token := strings.TrimPrefix(header, "Bearer ")
 			userID, err := uc.ParseToken(c.Request().Context(), token, "access")
 			if err != nil {
-				return c.JSON(http.StatusUnauthorized, ReturnError(err, "wrong token parse"))
+				return c.JSON(http.StatusUnauthorized, ReturnError(err, "wrong token"))
 			}
 
 			user, err := uc.GetUserByID(c.Request().Context(), userID)
@@ -39,8 +29,6 @@ func AuthMiddleware(uc service.AuthUsecase) echo.MiddlewareFunc {
 			}
 
 			c.Set("user", user)
-			c.Set("userId", userID)
-
 			return next(c)
 		}
 	}
@@ -49,4 +37,13 @@ func AuthMiddleware(uc service.AuthUsecase) echo.MiddlewareFunc {
 func UserFromContext(c echo.Context) (domain.User, bool) {
 	u, ok := c.Get("user").(domain.User)
 	return u, ok
+}
+
+func (h *AuthHandler) GetProfile(c echo.Context) error {
+	user, ok := UserFromContext(c)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, ReturnMessage("invalid user data"))
+	}
+
+	return c.JSON(http.StatusOK, user)
 }
