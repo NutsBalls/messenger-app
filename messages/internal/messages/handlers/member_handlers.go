@@ -2,23 +2,30 @@ package handlers
 
 import (
 	"fmt"
-	"messages/internal/messages/domain"
+	"messages/internal/messages/domain/dto"
+	"messages/internal/messages/service"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
+type MembersHandlers struct {
+	service service.UseCase
+}
+
+func NewMembersHandlers(s service.UseCase) *MembersHandlers {
+	return &MembersHandlers{service: s}
+}
+
 // AddUserToChat
-func (h *MessagesHandlers) AddUserToChat(c echo.Context) error {
-	var req domain.UserChatRequest
+func (h *MembersHandlers) AddUserToChat(c echo.Context) error {
+	var req dto.UserChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "bad request")
 	}
 
-	params := domain.UserChat(req)
-
-	if err := h.service.AddUserToChat(c.Request().Context(), params); err != nil {
+	if err := h.service.AddUserToChat(c.Request().Context(), req.ToDomain()); err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
@@ -27,16 +34,14 @@ func (h *MessagesHandlers) AddUserToChat(c echo.Context) error {
 }
 
 // RemoveUserFromChat
-func (h *MessagesHandlers) RemoveUserFromChat(c echo.Context) error {
-	var req domain.UserChatRequest
+func (h *MembersHandlers) RemoveUserFromChat(c echo.Context) error {
+	var req dto.UserChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "bad request")
 	}
 
-	params := domain.UserChat(req)
-
-	if err := h.service.RemoveUserFromChat(c.Request().Context(), params); err != nil {
+	if err := h.service.RemoveUserFromChat(c.Request().Context(), req.ToDomain()); err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
@@ -44,8 +49,8 @@ func (h *MessagesHandlers) RemoveUserFromChat(c echo.Context) error {
 }
 
 // GetChatMembers
-func (h *MessagesHandlers) GetChatMembers(c echo.Context) error {
-	var req domain.UserChatRequest
+func (h *MembersHandlers) GetChatMembers(c echo.Context) error {
+	var req dto.UserChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "bad request")
@@ -60,8 +65,8 @@ func (h *MessagesHandlers) GetChatMembers(c echo.Context) error {
 }
 
 // GetUserChats
-func (h *MessagesHandlers) GetUserChats(c echo.Context) error {
-	var req domain.UserChatRequest
+func (h *MembersHandlers) GetUserChats(c echo.Context) error {
+	var req dto.UserChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "bad request")
@@ -73,12 +78,9 @@ func (h *MessagesHandlers) GetUserChats(c echo.Context) error {
 	}
 
 	//TODO: асинхронно считвывать и записывать
-	resp := make([]domain.ChatResponse, 0, len(chats))
-	for i, v := range chats {
-		resp[i] = domain.ChatResponse{
-			Name:    v.Name,
-			IsGroup: v.IsGroup,
-		}
+	resp := make([]dto.ChatResponse, 0, len(chats))
+	for _, v := range chats {
+		resp = append(resp, dto.ToChatResponse(v))
 	}
 
 	return c.JSON(http.StatusOK, resp)

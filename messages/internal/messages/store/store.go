@@ -11,7 +11,7 @@ type MessagesRepository struct {
 	db *pgxpool.Pool
 }
 
-func (r *MessagesRepository) NewMessageRepository(db *pgxpool.Pool) *MessagesRepository {
+func NewMessagesRepository(db *pgxpool.Pool) *MessagesRepository {
 	return &MessagesRepository{
 		Queries: dbqueries.New(db),
 		db:      db,

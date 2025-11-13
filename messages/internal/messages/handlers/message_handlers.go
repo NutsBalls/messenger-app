@@ -2,40 +2,42 @@ package handlers
 
 import (
 	"fmt"
-	"messages/internal/messages/domain"
+	"messages/internal/messages/domain/dto"
+	"messages/internal/messages/service"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
+type MessagesHandlers struct {
+	service service.UseCase
+}
+
+func NewMessagesHandlers(service service.UseCase) *MessagesHandlers {
+	return &MessagesHandlers{
+		service: service,
+	}
+}
+
 // CreateMessage
 func (h *MessagesHandlers) CreateMessage(c echo.Context) error {
-	var req domain.CreateMessageRequest
+	var req dto.CreateMessageRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	params := domain.CreateMessage(req)
-
-	msg, err := h.service.CreateMessage(c.Request().Context(), params)
+	msg, err := h.service.CreateMessage(c.Request().Context(), req.ToDomain())
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	resp := domain.CreateMessageResponse{
-		ChatID:    msg.ChatID,
-		SenderID:  msg.SenderID,
-		Content:   msg.Content,
-		CreatedAt: msg.CreatedAt,
-	}
-
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.ToMessageResponse(msg))
 }
 
 // GetMessages
 func (h *MessagesHandlers) GetMessages(c echo.Context) error {
-	var req domain.GetMessagesRequest
+	var req dto.GetMessagesRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
@@ -47,22 +49,17 @@ func (h *MessagesHandlers) GetMessages(c echo.Context) error {
 	}
 
 	//TODO: асинхронно считывать и записывать
-	resp := make([]domain.CreateMessageResponse, 0, len(msgs))
-	for i, v := range msgs {
-		resp[i] = domain.CreateMessageResponse{
-			ChatID:    v.ChatID,
-			SenderID:  v.SenderID,
-			Content:   v.Content,
-			CreatedAt: v.CreatedAt,
-		}
+	resps := make([]dto.MessageResponse, 0, len(msgs))
+	for _, v := range msgs {
+		resps = append(resps, dto.ToMessageResponse(v))
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, resps)
 }
 
 // EditMessage
 func (h *MessagesHandlers) EditMessage(c echo.Context) error {
-	var req domain.EditMessageRequest
+	var req dto.EditMessageRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
@@ -77,7 +74,7 @@ func (h *MessagesHandlers) EditMessage(c echo.Context) error {
 
 // DeleteMessage
 func (h *MessagesHandlers) DeleteMessage(c echo.Context) error {
-	var req domain.DeleteMessageRequest
+	var req dto.DeleteMessageRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)

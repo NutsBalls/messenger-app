@@ -1,15 +1,24 @@
 package handlers
 
 import (
-	"messages/internal/messages/domain"
+	"messages/internal/messages/domain/dto"
+	"messages/internal/messages/service"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
+type ChatsHandlers struct {
+	service service.UseCase
+}
+
+func NewChatsHandlers(s service.UseCase) *ChatsHandlers {
+	return &ChatsHandlers{service: s}
+}
+
 // CreateChat
-func (h *MessagesHandlers) CreateChat(c echo.Context) error {
-	var req domain.CreateChatRequest
+func (h *ChatsHandlers) CreateChat(c echo.Context) error {
+	var req dto.CreateChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
@@ -20,12 +29,12 @@ func (h *MessagesHandlers) CreateChat(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, chat)
+	return c.JSON(http.StatusOK, dto.ToChatResponse(chat))
 }
 
 // DeleteChat
-func (h *MessagesHandlers) DeleteChat(c echo.Context) error {
-	var req domain.DeleteChatRequest
+func (h *ChatsHandlers) DeleteChat(c echo.Context) error {
+	var req dto.DeleteChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
@@ -39,8 +48,8 @@ func (h *MessagesHandlers) DeleteChat(c echo.Context) error {
 }
 
 // CreateGroupChat
-func (h *MessagesHandlers) CreateGroupChat(c echo.Context) error {
-	var req domain.CreateGroupChat
+func (h *ChatsHandlers) CreateGroupChat(c echo.Context) error {
+	var req dto.CreateGroupChatRequest
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
@@ -51,5 +60,5 @@ func (h *MessagesHandlers) CreateGroupChat(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	return c.JSON(http.StatusOK, groupChat)
+	return c.JSON(http.StatusOK, dto.ToChatResponse(groupChat))
 }
