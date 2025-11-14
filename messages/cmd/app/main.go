@@ -19,14 +19,15 @@ import (
 )
 
 func main() {
-
 	cfg := config.Load()
 	db := database.NewConn(cfg.DBURL)
-
 	repo := store.NewMessagesRepository(db)
 	svc := service.NewMessagesService(repo)
 
 	defer db.Close()
+	// hub := realtime.NewHub()
+	// go hub.Run()
+
 	e := echo.New()
 
 	h := handlers.NewHandlers(handlers.NewMessagesHandlers(svc), handlers.NewChatsHandlers(svc), handlers.NewMembersHandlers(svc))
