@@ -14,10 +14,18 @@ func (r *MessagesRepository) CreateChat(ctx context.Context, isGroup bool) (doma
 		return domain.Chat{}, err
 	}
 
+	var name string
+	if dbChat.Name != nil {
+		name = *dbChat.Name
+	}
+	if dbChat.IsGroup != nil {
+		isGroup = *dbChat.IsGroup
+	}
+
 	chat := domain.Chat{
 		ID:        dbChat.ID,
-		Name:      *dbChat.Name,
-		IsGroup:   *dbChat.IsGroup,
+		Name:      name,
+		IsGroup:   isGroup,
 		CreatedAt: dbChat.CreatedAt,
 	}
 

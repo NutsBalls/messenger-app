@@ -10,7 +10,7 @@ func Router(e *echo.Echo, h *AuthHandler, uc service.AuthUsecase) {
 	e.POST("/signup", h.SignUp)
 	e.POST("/login", h.Login)
 
-	api := e.Group("/api")
+	api := e.Group("/auth")
 	api.Use(h.AuthMiddleware(uc))
 	api.GET("/profile", h.GetProfile)
 	api.POST("/auth/refresh", h.Refresh)

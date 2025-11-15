@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"messages/internal/messages/handlers"
+	"messages/internal/messages/realtime"
 	"messages/internal/messages/service"
 	"messages/internal/messages/store"
 	"messages/pkg/config"
@@ -25,10 +26,14 @@ func main() {
 	svc := service.NewMessagesService(repo)
 
 	defer db.Close()
-	// hub := realtime.NewHub()
-	// go hub.Run()
 
 	e := echo.New()
+	hub := realtime.NewHub()
+	go hub.Run()
+
+	authURL := os.Getenv("AUTH_URL")
+	authClient := realtime.NewSimpleAuthClient(authURL)
+	e.GET("/ws", echo.WrapHandler(http.HandlerFunc(realtime.ServeWS(hub, authClient))))
 
 	h := handlers.NewHandlers(handlers.NewMessagesHandlers(svc), handlers.NewChatsHandlers(svc), handlers.NewMembersHandlers(svc))
 

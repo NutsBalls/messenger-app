@@ -2,6 +2,7 @@ package dto
 
 import (
 	"messages/internal/messages/domain"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -44,6 +45,11 @@ func (req CreateMessageRequest) ToDomain() domain.CreateMessage {
 }
 
 func ToMessageResponse(msg domain.Message) MessageResponse {
+	var updated string
+	if msg.UpdatedAt.Valid {
+		updated = msg.UpdatedAt.Time.Format(time.RFC3339)
+	}
+
 	return MessageResponse{
 		ID:        msg.ID,
 		ChatID:    msg.ChatID,
@@ -51,6 +57,6 @@ func ToMessageResponse(msg domain.Message) MessageResponse {
 		Content:   msg.Content,
 		IsEdited:  msg.IsEdited,
 		CreatedAt: msg.CreatedAt.Time.Format("2006-01-02 15:04:05"),
-		UpdatedAt: msg.UpdatedAt.Time.Format("2006-01-02 15:04:05"),
+		UpdatedAt: updated,
 	}
 }
